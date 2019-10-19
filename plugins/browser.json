@@ -1,0 +1,24 @@
+{
+  "prepare_queue": {
+    "installed": [],
+    "uninstalled": []
+  },
+  "config_munge": {
+    "files": {}
+  },
+  "installed_plugins": {
+    "cordova-plugin-device": {
+      "PACKAGE_NAME": "com.cinarteknoloji.chatbot"
+    },
+    "cordova-plugin-speechrecognition": {
+      "PACKAGE_NAME": "com.cinarteknoloji.chatbot"
+    },
+    "cordova-plugin-texttospeech": {
+      "PACKAGE_NAME": "com.cinarteknoloji.chatbot"
+    },
+    "cordova-plugin-whitelist": {
+      "PACKAGE_NAME": "com.cinarteknoloji.chatbot"
+    }
+  },
+  "dependent_plugins": {}
+}

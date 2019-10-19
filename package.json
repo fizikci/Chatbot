@@ -13,6 +13,8 @@
   "author": "Apache Cordova Team",
   "license": "Apache-2.0",
   "dependencies": {
+    "cordova-android": "^8.1.0",
+    "cordova-browser": "^6.0.0",
     "cordova-plugin-device": "^2.0.3",
     "cordova-plugin-speechrecognition": "^1.2.0",
     "cordova-plugin-texttospeech": "^0.1.1"
@@ -27,6 +29,9 @@
       "cordova-plugin-texttospeech": {},
       "cordova-plugin-device": {}
     },
-    "platforms": []
+    "platforms": [
+      "browser",
+      "android"
+    ]
   }
 }
