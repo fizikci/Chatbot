@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="js/angular.min.js"></script>
+        <script type="text/javascript" src="js/lib.js"></script>
+        <script type="text/javascript" src="js/index.js"></script>
+        <meta name="format-detection" content="telephone=no">
+        <meta name="msapplication-tap-highlight" content="no">
+        <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
+        <link rel="stylesheet" type="text/css" href="css/index.css">
+        <title>Hello World</title>
+    </head>
+    <body ng-controller="MainController">
+        <div class="cardContainer">
+            <div ng-repeat="card in cards">
+                <div ng-if="card.intent=='pronounce-game'" class="card {{card.intent}}">
+                    {{card.data.prompt}}<br>
+                    <h2>{{card.data.word}}</h2>
+                </div>
+
+                <div ng-if="card.intent=='pronounce-game-res'" class="card {{card.intent}}">
+                    <span class="icon" ng-repeat="n in [].constructor(card.data.score) track by $index">&#128077;</span>
+                    <span class="icon" ng-if="card.data.score==0">&#9785;</span>
+                    <br><br>
+                    You sounded like:
+                    <ul>
+                        <li ng-repeat="res in card.data.results">{{res}}</li>
+                    </ul>
+                </div>
+        
+                <div ng-if="card.intent=='question'" class="card {{card.intent}}">
+                    {{card.data}}
+                </div>
+
+                <div ng-if="card.intent=='what-time-is-it'" class="card {{card.intent}}">
+                    {{card.data}}
+                </div>
+
+                <div ng-if="card.intent=='unresolved'" class="card {{card.intent}}">
+                    {{card.data}}
+                </div>
+            </div>
+
+        </div>
+
+
+        <div class="microphone">
+            <input type="text" ng-model="input" placeholder="Say something">
+            <button ng-click="getVoice()">{{micAvailable?"MIC":"Send"}}</button>
+        </div>
+
+        <script type="text/javascript" src="js/jquery.min.js"></script>
+        <script type="text/javascript" src="cordova.js"></script>
+    </body>
+</html>

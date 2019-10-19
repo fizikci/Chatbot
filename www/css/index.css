@@ -1,0 +1,51 @@
+html {
+    height: 100%;
+}
+
+body {
+    height: 100%;
+    margin: 0px;
+    padding: 0px;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+
+.cardContainer {
+    height: 95%;
+    background: url(../img/bg.png);
+    background-size: cover;
+    overflow-y: auto
+}
+
+.card {
+    margin: 10px 20px 0px 20px;
+    padding: 10px;
+    border-radius: 0px 14px 14px;
+    background: white;
+    clear: both;
+    float: left;
+    box-shadow: 1px 1px 1px grey;
+}
+
+.card.question {
+    float: right;
+    clear: both;
+    border-radius: 14px 0px 14px 14px;
+    background: #97e09a;
+}
+
+.microphone {
+    height: 5%;
+}
+
+.microphone input {
+    width: 80%;
+    font-size: large;
+    border: none;
+    padding: 4px;
+}
+
+.microphone button {
+    width: 16%;
+    font-size: large;
+    height: -webkit-fill-available;
+}
