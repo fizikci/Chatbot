@@ -6,15 +6,22 @@ body {
     height: 100%;
     margin: 0px;
     padding: 0px;
-    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    font-family: Segoe UI,Helvetica Neue,Helvetica,Lucida Grande,Arial,Ubuntu,Cantarell,Fira Sans,sans-serif;
+    background: url(../img/bg.png);
+    background-size: cover;
+    display: flex;
+    flex-direction:column;
 }
 
 #cardContainer {
-    height: 93%;
-    background: url(../img/bg.png);
-    background-size: cover;
     overflow-y: auto;
-    padding-top:10px
+    padding-top:10px;
+    flex-grow: 1
+}
+.microphone {
+    width: 100%;
+    margin-bottom: 4px;
+    display: flex;
 }
 
 .card {
@@ -34,19 +41,32 @@ body {
     background: #97e09a;
 }
 
-.microphone {
-    height: 5%;
-}
 
 .microphone input {
-    width: 80%;
     font-size: large;
     border: none;
-    padding: 4px;
+    box-shadow: 1px 1px 1px grey;
+    border-radius: 20px;
+    flex-grow:1;
+    margin:6px 4px 6px 20px;
+    padding:0px 10px;
+    min-width: 10px;
 }
 
 .microphone button {
-    width: 16%;
+    width: 50px;
     font-size: large;
-    height: -webkit-fill-available;
+    height: 50px;
+    border: none;
+    border-radius: 30px;
+    background-color: #1da71d;
+    background-image: url(../img/mic.png);
+    background-size: 60%;
+    background-repeat: no-repeat;
+    background-position: center;
+    margin:0px 16px 0px 4px
+}
+
+textarea:focus, input:focus, button:focus{
+    outline: none;
 }
