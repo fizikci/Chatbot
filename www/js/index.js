@@ -1,11 +1,30 @@
 var scope = null;
+var timePassed = 0;
+var BOT = 1;
+var HUMAN = 2;
+var ANSWERING = 1;
+var ASKING = 2;
 
-setTimeout(function(){
-    scope.$apply(function(){
-        if(scope.cards.length==0)
-            scope.addCard({ intent: 'unresolved', data: 'Hey there! I am Chatbot.' });
+var INTENTS = {
+    unresolved: "unresolved",
+    greeting: "greeting",
+    help: 'help',
+    whatTimeIsIt: "what-time-is-it",
+    askingName: "asking-name",
+    pronounceGame: "pronounce-game",
+    sayAgain: "say-again",
+    endGame: "end-game"
+};
+
+setInterval(function(){
+    if(micListening)
+        return;
+
+    scope.$apply(function(){        
+        scope.addMsg(getNextBotMsg());
     });
-}, 10000);
+    timePassed++;
+}, 1000);
 
 angular.module('pronounceApp', [])
     .controller('MainController', function ($scope) {
@@ -13,106 +32,169 @@ angular.module('pronounceApp', [])
         checkSpeech();
 
         scope = $scope;
+        scope.micAvailable = micAvailable;
+        scope.msgs = [];
 
-        $scope.micAvailable = micAvailable;
+        scope.addMsg = function(msg){
+            if(!msg) return;
 
-        $scope.cards = [];
-
-        $scope.addCard = function(card){
-            $scope.cards.push(card);
+            msg.time = timePassed;
+            scope.msgs.push(msg);
+            scope.lastMsg = msg;
             setTimeout(function(){
                 var objDiv = document.getElementById("cardContainer");
                 objDiv.scrollTop = objDiv.scrollHeight;
             }, 200);
-        }
 
-        $scope.getVoice = function () {
-            if (!micAvailable || $scope.input) {
-                $scope.addCard({ intent: 'question', data: $scope.input || '???' });
-                $scope.addCard(getAnswer($scope.input || ''));
-                $scope.input = '';
-            }
-            else
-                speechToText('', 1, function (results) {
-                    var text = results[0];
-                    $scope.$apply(function () {
-                        $scope.addCard({ intent: 'question', data: text });
-                        $scope.addCard(getAnswer(text));
+            if(msg.text && msg.speaker==BOT)
+                speak(msg.text, MOODS.normal);
+            
+            if(msg.prompt && msg.speaker==BOT)
+                speak(msg.prompt, MOODS.normal, function(){
+                    speechToText('', 1, function (results) {
+                        scope.$apply(function(){
+                            scope.addMsg({speaker:HUMAN, action:ANSWERING, intent:msg.intent, text:results[0]});
+                        });
                     });
                 });
         }
 
+        scope.findMsg = function(intent){
+            return Enumerable.From(scope.msgs).LastOrDefault(null,"$.intent=='"+intent+"' && $.speaker=="+HUMAN+" && $.action=="+ASKING);
+        }
+
+        scope.getVoice = function () {
+            if (!micAvailable || $scope.input) {
+                var text = $scope.input || '???';
+                scope.addMsg({speaker:HUMAN, action:botWaitsForAnswer() ? ANSWERING : ASKING, intent: getIntent(text), text: text });
+                scope.input = '';
+            }
+            else if(micAvailable && !micListening){
+                speechToText('', 1, function (results) {
+                    scope.$apply(function () {
+                        var text = results[0];
+                        scope.addMsg({speaker:HUMAN, action: botWaitsForAnswer() ? ANSWERING : ASKING, intent: getIntent(text), text: text });
+                    });
+                });
+            }
+        }
     });
 
-var INTENTS = {
-    unresolved: "unresolved",
-    whatTimeIsIt: "what-time-is-it",
-    pronounceGame: "pronounce-game",
-    askingName: "asking-name"
-};
-
-function getAnswer(text) {
-    var intent = getIntent(text);
-    var data = getData(intent); 
-    var res = {
-        intent: intent,
-        data: data,
-        isString: typeof data == 'string'
-    };
-    if (micAvailable && res.isString)
-        TTS.speak({ text: res.data, locale: lang, rate: 1 });
-    return res;
-}
 
 function getIntent(text) {
-    if (text.match(/what time/gi))
+    if (text.match(/hi|hey|hello/gi))
+        return INTENTS.greeting;
+    else if (text.match(/what time/gi))
         return INTENTS.whatTimeIsIt;
     else if (text.match(/pronoun|pronunci/gi))
         return INTENTS.pronounceGame;
     else if (text.match(/your.+name/gi))
         return INTENTS.askingName;
+    else if (text.match(/(say|word).+again/gi))
+        return INTENTS.sayAgain;
+    else if (text.match(/((end|quit|finish).+game)|game over/gi))
+        return INTENTS.endGame;
+    else if (text.match(/help/gi))
+        return INTENTS.help;
+    else if(botWaitsForAnswer())
+        return scope.lastMsg.intent;
     else
         return INTENTS.unresolved;
 }
 
-function getData(intent) {
-    switch (intent) {
+function getNextBotMsg() {
+    
+    if(scope.msgs.length==0 && timePassed>4)
+        return {speaker:BOT, action:ANSWERING, intent:INTENTS.help, text:"Here are the things you can say:", list:getExampleIntents()};
+
+    var last = scope.lastMsg;
+    var prev = scope.msgs[scope.msgs.indexOf(last)-1];
+
+    if(last==null) return null;
+
+    switch (last.intent) {
+
+        case INTENTS.greeting:
+            return last.speaker==HUMAN ? {speaker:BOT, action:ANSWERING, intent:last.intent, text:getGreetingAnswer()} : null;
 
         case INTENTS.unresolved:
-            return getUnresolvedAnswer();
-        
+            return last.speaker==HUMAN ? {speaker:BOT, action:ANSWERING, intent:last.intent, text:getUnresolvedAnswer()} : null;
+                
         case INTENTS.whatTimeIsIt:
-            return "It is " + new Date().getHours() + ":" + new Date().getMinutes();
+            return last.speaker==HUMAN ? {speaker:BOT, action:ANSWERING, intent:last.intent, text:"It is " + new Date().toTimeString().substr(0,5)} : null;
 
         case INTENTS.pronounceGame:
-            var prompt = "Ok. Here is a word. Say it!";
-            var data = {word: words[Math.ceil(Math.random() * 10000)], prompt:prompt};
-            if (micAvailable) 
-                TTS.speak({ text: prompt, locale: lang, rate: 1 }, function(){
-                    scope.$apply(function(){
-                        speechToText("say "+data.word, 3, function(results){
-                            scope.$apply(function(){
-                                scope.addCard({
-                                    intent:'question',
-                                    data: results[0]
-                                });
-                                var score = 3 - results.indexOf(data.word); if(score>results.length) score = 0;
-                                var say = getScoreAnswer(score);
-                                TTS.speak({ text: say, locale: lang, rate: 1 });
-                                scope.addCard({
-                                    intent:'pronounce-game-res',
-                                    data: {score:score, results:results, say:say}
-                                });
-                            });
-                        });
-                    });
-                });
-            return data;
+            var game = scope.findMsg(INTENTS.pronounceGame);
+            if(last.speaker==HUMAN){
+                if(prev.intent==INTENTS.pronounceGame)
+                    return {speaker:BOT, action:ANSWERING, intent:last.intent, text:last.text!=prev.word?"You should have said "+prev.word+". You said "+last.text:"Excellent!"};
+                else
+                    return {speaker:BOT, action:ASKING, intent:last.intent, word: words[Math.ceil(Math.random() * 10000)], prompt:"Ok. Here is a word. Say it!"};
+            }
+            else {
+                if(last.action==ASKING)
+                    return null;
+                else if(game && !game.over && last!=game && last.time<timePassed-5)
+                    return {speaker:BOT, action:ASKING, intent:last.intent, word: words[Math.ceil(Math.random() * 10000)], prompt:"Here is another word."};
+                else
+                    return null;
+            }
+                            
+        case INTENTS.help:
+            return last.speaker==HUMAN ? {speaker:BOT, action:ANSWERING, intent:INTENTS.help, text:"Here are the things you can say:", list:getExampleIntents()} : null;
+        
+        case INTENTS.sayAgain:
+            if(last.speaker == HUMAN){
+                for(let i=scope.msgs.length-1; i>-1; i--)
+                    if(scope.msgs[i].speaker==BOT)
+                        return {speaker:BOT, action:scope.msgs[i].action, intent:scope.msgs[i].intent, text:scope.msgs[i].text, word:scope.msgs[i].word, prompt:scope.msgs[i].prompt, list:scope.msgs[i].list};
+                return {speaker:BOT, action:ANSWERING, intent:last.intent, text:"There is nothing to say"};
+            }
+            else return null;
+        
+        case INTENTS.endGame:
+            if(last.speaker == BOT)
+                return null;
 
+            var game = scope.findMsg(INTENTS.pronounceGame);
+            if(game){
+                if(game.over) return {speaker:BOT, action:ANSWERING, intent:last.intent, text:"Game is already over"};
+                game.over = true;
+                return {speaker:BOT, action:ANSWERING, intent:last.intent, text:"Ok. Game over!"};
+            }
+            return {speaker:BOT, action:ANSWERING, intent:last.intent, text:"There is no game."};
+                        
         case INTENTS.askingName:
-            return "My name is Chatbot";
+            return last.speaker==HUMAN ? {speaker:BOT, action:ANSWERING, intent:last.intent, text:"My name is Chatbot"} : null;
     
     }
+
 }
 
+function botWaitsForAnswer(){
+    return scope.lastMsg && scope.lastMsg.speaker==BOT && scope.lastMsg.prompt;
+}
 
+function getExampleIntents(){
+    var list = [];
+    for(let intent in INTENTS){
+        if(intent=='unresolved') continue;
+        list.push(getExampleIntent(INTENTS[intent]));
+    }
+    return list;
+}
+function getExampleIntent(intent){
+    switch (intent) {
+        case INTENTS.whatTimeIsIt:
+            return "What time is it?";
+        case INTENTS.pronounceGame:
+            return "Let's play pronunciation game";
+        case INTENTS.sayAgain:
+            return "Say the last word again";
+        case INTENTS.help:
+            return "Help";
+        case INTENTS.askingName:
+            return "What is your name?";
+    }
+    return intent;
+}

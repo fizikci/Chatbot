@@ -2,6 +2,7 @@
 <html>
     <head>
         <script src="js/angular.min.js"></script>
+        <script type="text/javascript" src="js/linq.min.js"></script>
         <script type="text/javascript" src="js/lib.js"></script>
         <script type="text/javascript" src="js/index.js"></script>
         <meta name="format-detection" content="telephone=no">
@@ -12,26 +13,15 @@
     </head>
     <body ng-controller="MainController">
         <div id="cardContainer">
-            <div ng-repeat="card in cards">
-                <div ng-if="card.intent=='pronounce-game'" class="card {{card.intent}}">
-                    {{card.data.prompt}}<br>
-                    <h3 style="margin:0px;text-align: center;">{{card.data.word}}</h3>
-                </div>
-
-                <div ng-if="card.intent=='pronounce-game-res'" class="card {{card.intent}}">
-                    <span class="icon" ng-repeat="n in [].constructor(card.data.score) track by $index">&#128077;</span>
-                    <span class="icon" ng-if="card.data.score==0">&#9785;</span>
-                    <br><br>
-                    You sounded like:
-                    <ul>
-                        <li ng-repeat="res in card.data.results">{{res}}</li>
+            <div ng-repeat="card in msgs">
+                <div class="card {{card.speaker==1?'bot':'human'}}">
+                    <span ng-if="card.text">{{card.text}}<br></span>
+                    <span ng-if="card.prompt">{{card.prompt}}<br></span>
+                    <h3 style="margin:0px;text-align: center;" ng-if="card.word">{{card.word}}</h3>
+                    <ul ng-if="card.list">
+                        <li ng-repeat="l in card.list">{{l}}</li>
                     </ul>
                 </div>
-        
-                <div ng-if="card.isString || card.intent=='question'" class="card {{card.intent}}">
-                    {{card.data}}
-                </div>
-
             </div>
 
         </div>

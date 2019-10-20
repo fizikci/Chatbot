@@ -2,6 +2,7 @@ document.addEventListener('deviceready', onDeviceReady, false);
 
 var lang = 'en-US';
 var micAvailable = true;
+var micListening = false;
 
 function onDeviceReady() {
     angular.bootstrap(document, ['pronounceApp']);
@@ -35,6 +36,7 @@ function checkSpeech() {
 }
 
 function speechToText(prompt, matches, success) {
+    micListening = true;
     let options = {
         language: lang,
         matches: matches,
@@ -43,16 +45,26 @@ function speechToText(prompt, matches, success) {
         showPartial: false
     }
     window.plugins.speechRecognition.startListening(
-        function(results){success(results);},
-        function (err) {success(JSON.stringify(err));/*alert(JSON.stringify(err));*/},
+        function(results){micListening=false; success(results);},
+        function (err) {micListening=false; success(JSON.stringify(err));},
         options);
+}
+
+var MOODS = {
+    normal: {rate:1.3, volume:1},
+    excited: {rate:2, volume:1.5},
+    sad: {rate:1, volume:.7},
+}
+function speak(text, mood, success){
+    if(!micAvailable) return;
+    TTS.speak({ text: text, locale: lang, rate: mood.rate }, success);
 }
 
 function getScoreAnswer(score){
     if(score==0)
         return "You may need to try again!";
     else if(score==1)
-        return "Not bad";
+        return "Not bad.";
     else if(score==2)
         return "Good!";
     else if(score==3)
@@ -62,6 +74,11 @@ function getScoreAnswer(score){
 
 function getUnresolvedAnswer(){
     var answers = ["Sorry, I couldn't understand what you said.","Come again?","I am afraid I don't know this.","I have never heard this","This is not covered by my limited knowledge","Can you please rephrase this?"];
+    return answers[Math.floor(Math.random()*answers.length)];
+}
+
+function getGreetingAnswer(){
+    var answers = ["Hi!","Hey!","Hello"];
     return answers[Math.floor(Math.random()*answers.length)];
 }
 

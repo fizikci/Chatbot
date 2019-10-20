@@ -10,7 +10,7 @@ body {
 }
 
 #cardContainer {
-    height: 95%;
+    height: 93%;
     background: url(../img/bg.png);
     background-size: cover;
     overflow-y: auto;
@@ -27,7 +27,7 @@ body {
     box-shadow: 1px 1px 1px grey;
 }
 
-.card.question {
+.card.human {
     float: right;
     clear: both;
     border-radius: 14px 0px 14px 14px;
