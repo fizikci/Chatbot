@@ -3,6 +3,7 @@ document.addEventListener('deviceready', onDeviceReady, false);
 var lang = 'en-US';
 var micAvailable = true;
 var micListening = false;
+var speaking = false;
 
 function onDeviceReady() {
     angular.bootstrap(document, ['pronounceApp']);
@@ -51,13 +52,15 @@ function speechToText(prompt, matches, success) {
 }
 
 var MOODS = {
-    normal: {rate:1.3, volume:1},
-    excited: {rate:2, volume:1.5},
-    sad: {rate:1, volume:.7},
+    normal: {rate:1, volume:.7},
+    excited: {rate:1, volume:1},
+    sad: {rate:.8, volume:.5},
 }
 function speak(text, mood, success){
-    if(!micAvailable) return;
-    TTS.speak({ text: text, locale: lang, rate: mood.rate }, success);
+    //if(!micAvailable) return;
+    speaking = true;
+    responsiveVoice.speak(text, "US English Female", {rate: mood.rate, volume:mood.volume, onend:function(){speaking=false; if(success) success();}});
+    //TTS.speak({ text: text, locale: lang, rate: mood.rate }, function(){speaking=false; if(success) success();});
 }
 
 function getScoreAnswer(score){
@@ -84,6 +87,71 @@ function getGreetingAnswer(){
 
 function wordsSame(w1, w2){
     return w1.toLowerCase() == w2.toLowerCase();
+}
+
+function isYes(str){
+    return str.match(/yes|ok|yep|right|true/i);
+}
+
+function resolveDate(str){
+    var now = new Date();
+    var tomorrow = new Date(); tomorrow.setDate(now.getDate()+1);
+    var nextWeek = new Date(); nextWeek.setDate(now.getDate()+7);
+    var nextMonth = new Date(); nextMonth.setDate(now.getDate()+30)
+    if(str=='today') return now.toISOString().substr(0,10);
+    if(str=='tomorrow') return tomorrow.toISOString().substr(0,10);
+    if(str=='next week') return nextWeek.toISOString().substr(0,10);
+    if(str=='next month') return nextMonth.toISOString().substr(0,10);
+    return nextWeek.toISOString().substr(0,10);
+}
+
+var flightApiKey = "hE2AG16bFzeUaCXzPSfSzTt8EUXhlPoG";
+var flightApiSecret = "OIsF2Am3tdd5XAbb";
+var flightApiToken = "";
+
+async function flightApiGetToken(){
+    return (await (await fetch("https://test.api.amadeus.com/v1/security/oauth2/token", {
+                        method: 'post',
+                        headers: {"Content-type": "application/x-www-form-urlencoded"},
+                        body: `grant_type=client_credentials&client_id=${flightApiKey}&client_secret=${flightApiSecret}`
+                    })
+            ).json()).access_token;
+}
+
+async function flightSearch(flight){
+    if(!flightApiToken)
+        flightApiToken = await flightApiGetToken();
+
+    var url = `https://test.api.amadeus.com/v1/shopping/flight-offers?origin=${flight.from}&destination=${flight.to}&departureDate=${flight.when}&max=10`;
+    return fetch(url, {
+                        headers: {"Authorization": "Bearer "+flightApiToken}
+                    })
+                    .then(res=>res.json());
+}
+
+function getFlightList(res){
+    return Enumerable.From(res.data).Select(d=>
+        d.offerItems[0].services[0].segments[0].flightSegment.carrierCode + ' ' +
+        d.offerItems[0].services[0].segments[0].pricingDetailPerAdult.travelClass + ' class from ' +
+        d.offerItems[0].price.total +' '+ res.meta.currency
+                ).ToArray();
+}
+
+async function citySearch(keyword){
+    console.log('city search for '+keyword);
+    if(!flightApiToken)
+        flightApiToken = await flightApiGetToken();
+
+    var url = `https://test.api.amadeus.com/v1/reference-data/locations?subType=CITY&keyword=${keyword}&page[limit]=1`;
+    return fetch(url, {
+                        headers: {"Authorization": "Bearer "+flightApiToken}
+                    })
+                    .then(res=>res.json());
+}
+
+function scrollToBottom(){
+    var objDiv = document.getElementById("cardContainer");
+    objDiv.scrollTop = objDiv.scrollHeight;
 }
 
 var words = ["the", "of", "and", "to", "in", "i", "that", "was", "his", "he", "it", "with", "is", "for", "as", "had", "you", "not", "be", "her", "on", "at", "by", "which", "have", "or", "from", "this", "him", "but", "all", "she", "they", "were", "my", "are", "me", "one", "their", "so", "an", "said", "them", "we", "who", "would", "been", "will", "no", "when", "there", "if", "more", "out", "up", "into", "do", "any", "your", "what", "has", "man", "could", "other", "than", "our", "some", "very", "time", "upon", "about", "may", "its", "only", "now", "like", "little", "then", "can", "should", "made", "did", "us", "such", "a", "great", "before", "must", "two", "these", "see", "know", "over", "much", "down", "after", "first", "Mr", "good", "men", "own", "never", "most", "old", "shall", "day", "where", "those", "came", "come", "himself", "way", "work", "life", "without", "go", "make", "well", "through", "being", "long", "say", "might", "how", "am", "too", "even", "def", "again", "many", "back", "here", "think", "every", "people", "went", "same", "last", "thought", "away", "under", "take", "found", "hand", "eyes", "still", "place", "while", "just", "also", "young", "yet", "though", "against", "things", "get", "ever", "give", "god", "years", "off", "face", "nothing", "right", "once", "another", "left", "part", "saw", "house", "world", "head", "three", "took", "new", "love", "always", "Mrs", "put", "night", "each", "king", "between", "tell", "mind", "heart", "few", "because", "thing", "whom", "far", "seemed", "looked", "called", "whole", "de", "set", "both", "got", "find", "done", "heard", "look", "name", "days", "told", "let", "lord", "country", "asked", "going", "seen", "better", "p", "having", "home", "knew", "side", "something", "moment", "father", "among", "course", "hands", "woman", "enough", "words", "mother", "soon", "full", "end", "gave", "room", "almost", "small", "thou", "cannot", "water", "want", "however", "light", "quite", "brought", "nor", "word", "whose", "given", "door", "best", "turned", "taken", "does", "use", "morning", "myself", "Gutenberg", "felt", "until", "since", "power", "themselves", "used", "rather", "began", "present", "voice", "others", "white", "works", "less", "money", "next", "poor", "death", "stood", "form", "within", "together", "till", "thy", "large", "matter", "kind", "often", "certain", "herself", "year", "friend", "half", "order", "round", "TRUE", "anything", "keep", "sent", "wife", "means", "believe", "passed", "feet", "near", "public", "state", "son", "hundred", "children", "thus", "hope", "alone", "above", "case", "dear", "thee", "says", "person", "high", "read", "city", "already", "received", "fact", "gone", "girl", "known", "hear", "times", "least", "perhaps", "sure", "indeed", "english", "open", "body", "itself", "along", "land", "return", "leave", "air", "nature", "answered", "either", "law", "help", "lay", "point", "child", "letter", "four", "wish", "fire", "cried", "2", "women", "speak", "number", "therefore", "hour", "friends", "held", "free", "war", "during", "several", "business", "whether", "er", "manner", "second", "reason", "replied", "united", "call", "general", "why", "behind", "became", "john", "become", "dead", "earth", "boy", "lost", "forth", "thousand", "looking", "I'll", "family", "soul", "feel", "coming", "England", "spirit", "question", "care", "truth", "ground", "really", "rest", "mean", "different", "making", "possible", "fell", "towards", "human", "kept", "short", "town", "following", "need", "cause", "met", "evening", "returned", "five", "strong", "able", "french", "live", "lady", "subject", "sn", "answer", "sea", "fear", "understand", "hard", "terms", "doubt", "around", "ask", "arms", "turn", "sense", "seems", "black", "bring", "followed", "beautiful", "close", "dark", "hold", "character", "sort", "sight", "ten", "show", "party", "fine", "ye", "ready", "story", "common", "book", "electronic", "talk", "account", "mark", "interest", "written", "can't", "bed", "necessary", "age", "else", "force", "idea", "longer", "art", "spoke", "across", "brother", "early", "ought", "sometimes", "line", "saying", "table", "appeared", "river", "continued", "eye", "ety", "sun", "information", "later", "everything", "reached", "suddenly", "past", "hours", "strange", "deep", "change", "miles", "feeling", "act", "meet", "paid", "further", "purpose", "happy", "added", "seem", "taking", "blood", "rose", "south", "beyond", "cold", "neither", "forward", "view", "I've", "position", "sound", "none", "entered", "clear", "road", "late", "stand", "suppose", "la", "daughter", "real", "nearly", "mine", "laws", "knowledge", "comes", "toward", "bad", "cut", "copy", "husband", "six", "France", "living", "peace", "didn't", "low", "north", "remember", "effect", "natural", "pretty", "fall", "fair", "service", "below", "except", "American", "hair", "London", "laid", "pass", "led", "copyright", "doing", "army", "run", "horse", "future", "opened", "pleasure", "history", "west", "pay", "red", "an'", "4", "hath", "note", "although", "wanted", "gold", "makes", "desire", "play", "master", "office", "tried", "front", "big", "Dr", "lived", "certainly", "wind", "receive", "attention", "government", "unto", "church", "strength", "length", "company", "placed", "paper", "letters", "probably", "glad", "important", "especially", "greater", "yourself", "fellow", "bear", "opinion", "window", "ran", "faith", "ago", "agreement", "charge", "beauty", "lips", "remained", "arm", "latter", "duty", "send", "distance", "silence", "foot", "wild", "object", "die", "save", "gentleman", "trees", "green", "trouble", "smile", "books", "wrong", "various", "sleep", "persons", "blockquote", "happened", "particular", "drew", "minutes", "hardly", "walked", "chief", "chance", "according", "beginning", "action", "deal", "loved", "visit", "thinking", "follow", "standing", "knows", "try", "presence", "heavy", "sweet", "plain", "donations", "immediately", "wrote", "mouth", "rich", "thoughts", "months", "u", "won't", "afraid", "Paris", "single", "joy", "enemy", "broken", "unless", "states", "ship", "condition", "carry", "exclaimed", "including", "filled", "seeing", "influence", "write", "boys", "appear", "outside", "secret", "parts", "please", "appearance", "evil", "march", "george", "whatever", "slowly", "tears", "horses", "places", "caught", "stay", "instead", "struck", "blue", "York", "impossible", "period", "sister", "battle", "school", "Mary", "raised", "occasion", "married", "man's", "former", "food", "youth", "learned", "merely", "reach", "system", "twenty", "dinner", "quiet", "easily", "moved", "afterwards", "giving", "walk", "stopped", "laughed", "language", "expression", "week", "hall", "danger", "property", "wonder", "usual", "figure", "born", "court", "generally", "grew", "showed", "getting", "ancient", "respect", "third", "worth", "simple", "tree", "leaving", "remain", "society", "fight", "wall", "result", "heaven", "William", "started", "command", "tone", "regard", "expected", "mere", "month", "beside", "silent", "perfect", "experience", "street", "writing", "goes", "circumstances", "entirely", "fresh", "duke", "covered", "bound", "east", "wood", "stone", "quickly", "notice", "bright", "Christ", "boat", "noble", "meant", "somewhat", "sudden", "value", "c.", "direction", "chair", "due", "support", "tom", "date", "waiting", "Christian", "village", "lives", "reading", "agree", "lines", "considered", "field", "observed", "scarcely", "wished", "wait", "greatest", "permission", "success", "piece", "british", "ex", "Charles", "formed", "speaking", "trying", "conversation", "proper", "hill", "music", "opportunity", "that's", "German", "afternoon", "cry", "cost", "allowed", "girls", "considerable", "c", "broke", "honour", "seven", "private", "sit", "news", "top", "scene", "discovered", "marriage", "step", "garden", "race", "begin", "per", "individual", "sitting", "learn", "political", "difficult", "bit", "speech", "Henry", "lie", "cast", "eat", "authority", "etc.", "floor", "ill", "ways", "officers", "offered", "original", "happiness", "flowers", "produced", "summer", "provide", "study", "religion", "picture", "walls", "personal", "America", "watch", "pleased", "leaves", "declared", "hot", "understood", "effort", "prepared", "escape", "attempt", "supposed", "killed", "fast", "author", "Indian", "brown", "determined", "pain", "spring", "takes", "drawn", "soldiers", "houses", "beneath", "talking", "turning", "century", "steps", "intended", "soft", "straight", "matters", "likely", "corner", "trademark", "justice", "simply", "produce", "trust", "appears", "Rome", "laugh", "forget", "Europe", "passage", "eight", "closed", "ourselves", "gives", "dress", "passing", "terrible", "required", "medium", "efforts", "sake", "breath", "wise", "ladies", "possession", "pleasant", "perfectly", "o'", "memory", "usually", "grave", "fixed", "modern", "spot", "troops", "rise", "break", "fifty", "island", "meeting", "camp", "nation", "existence", "reply", "I'd", "copies", "sky", "touch", "equal", "fortune", "v.", "shore", "domain", "named", "situation", "looks", "promise", "orders", "degree", "middle", "winter", "plan", "spent", "allow", "pale", "conduct", "running", "religious", "surprise", "minute", "roman", "cases", "shot", "lead", "move", "names", "stop", "higher", "et", "father's", "threw", "worse", "built", "spoken", "glass", "board", "vain", "affairs", "instance", "safe", "loss", "doctor", "offer", "class", "complete", "access", "lower", "wouldn't", "repeated", "forms", "darkness", "military", "warm", "drink", "passion", "ones", "physical", "example", "ears", "questions", "start", "lying", "smiled", "keeping", "spite", "shown", "directly", "james", "hart", "serious", "hat", "dog", "silver", "sufficient", "main", "mentioned", "servant", "pride", "crowd", "train", "wonderful", "moral", "instant", "associated", "path", "greek", "meaning", "fit", "ordered", "lot", "he's", "proved", "obliged", "enter", "rule", "sword", "attack", "seat", "game", "health", "paragraph", "statement", "social", "refund", "sorry", "courage", "members", "grace", "official", "dream", "worthy", "rock", "jack", "provided", "special", "shook", "request", "mighty", "glance", "heads", "movement", "fee", "share", "expect", "couldn't", "dollars", "spread", "opposite", "glory", "twelve", "space", "engaged", "peter", "wine", "ordinary", "mountains", "taste", "iron", "isn't", "distribute", "trade", "consider", "greatly", "accepted", "forced", "advantage", "ideas", "decided", "using", "officer", "rate", "clothes", "sign", "feelings", "native", "promised", "judge", "difference", "working", "anxious", "marry", "captain", "finished", "extent", "watched", "curious", "foreign", "besides", "method", "excellent", "confidence", "marked", "'em", "jesus", "exactly", "importance", "finally", "bill", "vast", "prove", "fancy", "quick", "yes", "sought", "prevent", "neck", "hearts", "liberty", "interesting", "sides", "legal", "gentlemen", "dry", "serve", "aside", "pure", "concerning", "forgotten", "lose", "powers", "possessed", "thrown", "evidence", "distant", "michael", "progress", "similar", "narrow", "altogether", "building", "page", "particularly", "knowing", "weeks",

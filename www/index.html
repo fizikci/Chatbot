@@ -19,8 +19,14 @@
                     <span ng-if="card.prompt">{{card.prompt}}<br></span>
                     <h3 style="margin:0px;text-align: center;" ng-if="card.word">{{card.word}}</h3>
                     <ul ng-if="card.list">
-                        <li ng-repeat="l in card.list">{{l}}</li>
+                        <li ng-repeat="l in card.list track by $index">{{l}}</li>
                     </ul>
+                    <div ng-if="card.asyncList">
+                        <img ng-if="card.asyncList=='waiting'" src="img/loading.gif" width="50"/>
+                        <ul ng-if="card.asyncList!='waiting'">
+                            <li ng-repeat="l in card.asyncList track by $index">{{l}}</li>
+                        </ul>    
+                    </div>
                 </div>
             </div>
 
@@ -28,10 +34,12 @@
 
 
         <div class="microphone">
-            <input type="text" ng-model="input" placeholder="Say something">
+            <input type="text" ng-model="input" placeholder="Say something" ng-enter="getVoice()">
             <button ng-click="getVoice()">&nbsp;</button>
         </div>
 
+        <script src='https://code.responsivevoice.org/1.5.4/responsivevoice.js'></script>
+        <script>responsiveVoice.setDefaultVoice("US English Female");</script></div>
         <script type="text/javascript" src="js/jquery.min.js"></script>
         <script type="text/javascript" src="cordova.js"></script>
     </body>

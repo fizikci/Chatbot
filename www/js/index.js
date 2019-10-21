@@ -17,10 +17,10 @@ var INTENTS = {
     bookFlight: "book-flight"
 };
 
-var exampleIntents = ["Let's play pronunciation game", "Say the last word again", "Game over", "Book a flight"];
+var exampleIntents = ["Let's play pronunciation game", "Say the last word again", "Game over"];
 
 setInterval(function(){
-    if(micListening)
+    if(micListening || speaking)
         return;
 
     scope.$apply(function(){        
@@ -29,61 +29,75 @@ setInterval(function(){
     timePassed++;
 }, 1000);
 
-angular.module('pronounceApp', [])
-    .controller('MainController', function ($scope) {
+var app = angular.module('pronounceApp', []);
+app.controller('MainController', function ($scope) {
 
-        checkSpeech();
+    checkSpeech();
 
-        scope = $scope;
-        scope.micAvailable = micAvailable;
-        scope.msgs = [];
+    scope = $scope;
+    scope.micAvailable = micAvailable;
+    scope.msgs = [];
 
-        scope.addMsg = function(msg){
-            if(!msg) return;
+    scope.addMsg = function(msg){
+        if(!msg) return;
 
-            msg.time = timePassed;
-            scope.msgs.push(msg);
-            scope.lastMsg = msg;
-            setTimeout(function(){
-                var objDiv = document.getElementById("cardContainer");
-                objDiv.scrollTop = objDiv.scrollHeight;
-            }, 200);
+        msg.time = timePassed;
+        scope.msgs.push(msg);
+        scope.lastMsg = msg;
+        setTimeout(scrollToBottom, 200);
 
-            if(msg.text && msg.speaker==BOT)
-                speak(msg.text, MOODS.normal);
-            
-            if((msg.prompt && msg.speaker==BOT) || scope.msgs.length==1)
-                speak(msg.prompt || msg.text, MOODS.normal, function(){
-                    speechToText('', 1, function (results) {
-                        scope.$apply(function(){
-                            scope.addMsg({speaker:HUMAN, action:botWaitsForAnswer() ? ANSWERING : ASKING, intent:getIntent(results[0]), text:results[0]});
-                        });
-                    });
-                });
-        }
-
-        scope.addMsg({speaker:BOT, action:ANSWERING, intent:INTENTS.help, text:"Welcome to English Learner's Chatbot! Here are the things you can say:", list:exampleIntents});
-
-        scope.findContext = function(intent){
-            return Enumerable.From(scope.msgs).LastOrDefault(null,"$.intent=='"+intent+"' && $.speaker=="+HUMAN+" && $.action=="+ASKING);
-        }
-
-        scope.getVoice = function () {
-            if (!micAvailable || $scope.input) {
-                var text = $scope.input || '???';
-                scope.addMsg({speaker:HUMAN, action:botWaitsForAnswer() ? ANSWERING : ASKING, intent: getIntent(text), text: text });
-                scope.input = '';
-            }
-            else if(micAvailable && !micListening){
+        if(msg.text && msg.speaker==BOT)
+            speak(msg.text, msg.mood || MOODS.normal);
+        
+        if((msg.prompt && msg.speaker==BOT) || scope.msgs.length==1)
+            speak(msg.prompt || msg.text, msg.mood || MOODS.normal, function(){
                 speechToText('', 1, function (results) {
-                    scope.$apply(function () {
-                        var text = results[0];
-                        scope.addMsg({speaker:HUMAN, action: botWaitsForAnswer() ? ANSWERING : ASKING, intent: getIntent(text), text: text });
+                    scope.$apply(function(){
+                        var currIntent = getIntent(results[0]);
+                        scope.addMsg({speaker:HUMAN, action:botWaitsForAnswer(currIntent) ? ANSWERING : ASKING, intent:currIntent, text:results[0]});
                     });
                 });
-            }
+            });
+    }
+
+    scope.addMsg({speaker:BOT, action:ANSWERING, intent:INTENTS.help, text:"Welcome to English Learner's Chatbot! Here are the things you can say:", list:exampleIntents});
+
+    scope.findContext = function(intent){
+        return Enumerable.From(scope.msgs).LastOrDefault(null,"$.intent=='"+intent+"' && $.speaker=="+HUMAN+" && $.action=="+ASKING);
+    }
+
+    scope.getVoice = function () {
+        if (!micAvailable || $scope.input) {
+            var text = $scope.input || '???';
+            var currIntent = getIntent(text);
+            scope.addMsg({speaker:HUMAN, action:botWaitsForAnswer(currIntent) ? ANSWERING : ASKING, intent: currIntent, text: text });
+            scope.input = '';
         }
-    });
+        else if(micAvailable && !micListening){
+            speechToText('', 1, function (results) {
+                scope.$apply(function () {
+                    var text = results[0];
+                    var currIntent = getIntent(text);
+                    scope.addMsg({speaker:HUMAN, action: botWaitsForAnswer(currIntent) ? ANSWERING : ASKING, intent: currIntent, text: text });
+                });
+            });
+        }
+    }
+});
+
+app.directive('ngEnter', function () {
+    return function (scope, element, attrs) {
+        element.bind("keydown keypress", function (event) {
+            if (event.which === 13) {
+                scope.$apply(function () {
+                    scope.$eval(attrs.ngEnter);
+                });
+
+                event.preventDefault();
+            }
+        });
+    };
+});  
 
 
 function getIntent(text) {
@@ -141,7 +155,7 @@ function getNextBotMsg() {
             if(last.speaker==HUMAN){
                 if(prev.intent==INTENTS.pronounceGame){
                     game.lastResultSuccess = wordsSame(last.text,prev.word);
-                    msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text: !game.lastResultSuccess ? "You should have said "+prev.word+". You said "+last.text : (prev.word+". Excellent!")};
+                    msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text: !game.lastResultSuccess ? "You should have said "+prev.word+". You said "+last.text : (prev.word+". Excellent!"), mood:game.lastResultSuccess?MOODS.excited:MOODS.sad};
                 }
                 else {
                     game.lastWord = words[Math.ceil(Math.random() * 10000)];
@@ -209,7 +223,15 @@ function getNextBotMsg() {
                 if(!flight.parsed)
                     parseFlightRequest(flight);
                 
-                if(prev.asking) flight[prev.asking] = last.text;
+                if(prev.asking) {
+                    flight[prev.asking] = last.text;
+                    if(prev.asking=='from')
+                        citySearch(flight.from).then(res=>{ flight.from = res.meta.count>0?res.data[0].iataCode:null; flight.fromFetched = flight.from!=null; });
+                    if(prev.asking=='to')
+                        citySearch(flight.to).then(res=>{ flight.to = res.meta.count>0?res.data[0].iataCode:null; flight.toFetched = flight.to!=null; });
+                    if(prev.asking=='when')
+                        flight.when = resolveDate(flight.when);
+                }
 
                 if(!flight.from)
                     msg = {speaker:BOT, action:ASKING, intent:last.intent, asking:"from", prompt:"Where are you flying from?"};
@@ -218,9 +240,19 @@ function getNextBotMsg() {
                 else if(!flight.when)
                     msg = {speaker:BOT, action:ASKING, intent:last.intent, asking:"when", prompt:"When do yo want to fly?"};
                 else if(!flight.confirm)
-                    msg = {speaker:BOT, action:ASKING, intent:last.intent, asking:"confirm", prompt:`You want to fly from ${flight.from} to ${flight.to} ${flight.when}, don't you?`};
-                else if(flight.confirm=="yes")
-                    msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:`Great! Here are the flights:`, list:['flight 1','flight 2']};
+                    if(flight.fromFetched && flight.toFetched)
+                        msg = {speaker:BOT, action:ASKING, intent:last.intent, asking:"confirm", prompt:`You want to fly from ${flight.from} to ${flight.to} ${flight.when}, is that right?`};
+                    else
+                        msg = null;
+                else if(isYes(flight.confirm)){
+                    msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:`Great! Please wait while we are fetching flights from Amadeus...`, asyncList:'waiting', mood:MOODS.excited};
+                    flightSearch(flight).then(res=>{
+                        scope.$apply(function(){
+                            msg.asyncList = getFlightList(res);
+                            setTimeout(scrollToBottom, 100);
+                        });
+                    });
+                }
                 else {
                     flight.over = true;
                     msg = null;
@@ -231,28 +263,44 @@ function getNextBotMsg() {
 
     if(!msg && game && !game.over && last.intent!=INTENTS.pronounceGame && last.time<timePassed-2){
         game.over = true;
-        msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:"Game over by the way!"};
     }
 
     return msg;
 }
 
-function botWaitsForAnswer(){
-    return scope.lastMsg && scope.lastMsg.speaker==BOT && scope.lastMsg.prompt;
+function botWaitsForAnswer(currIntent){
+    if(currIntent)
+        return scope.lastMsg && scope.lastMsg.intent==currIntent && scope.lastMsg.speaker==BOT && scope.lastMsg.prompt;
+    else
+        return scope.lastMsg && scope.lastMsg.speaker==BOT && scope.lastMsg.prompt;
 }
 
 function parseFlightRequest(flight){
     var str = flight.text;
-    var res = str.match(/tomorrow|next week|next month/i);
+    var res = str.match(/today|tomorrow|next week|next month/i);
     if(res){
-        flight.when = res[0];
+        flight.when = resolveDate(res[0]);
         str = str.replace(res[0],'');
     }
 
     res = str.match(/from (.+) to (.+)/i);
     if(res && res.length>0){
         flight.from = res[1];
+        citySearch(flight.from).then(r=>{ flight.from = r.meta.count>0?r.data[0].iataCode:null; flight.fromFetched = flight.from!=null; });
         flight.to = res[2];
+        citySearch(flight.to).then(r=>{ flight.to = r.meta.count>0?r.data[0].iataCode:null; flight.toFetched = flight.to!=null; });
+    } else {
+        res = str.match(/to (.+)/i);
+        if(res && res.length>0){
+            flight.to = res[1];
+            citySearch(flight.to).then(r=>{ flight.to = r.meta.count>0?r.data[0].iataCode:null; flight.toFetched = flight.to!=null; });
+        } else {
+            res = str.match(/from (.+)/i);
+            if(res && res.length>0){
+                flight.from = res[1];
+                citySearch(flight.from).then(r=>{ flight.from = r.meta.count>0?r.data[0].iataCode:null; flight.fromFetched = flight.from!=null; });
+            }        
+        }
     }
 
     flight.parsed = true;
