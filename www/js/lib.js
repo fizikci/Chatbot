@@ -85,6 +85,11 @@ function getGreetingAnswer(){
     return answers[Math.floor(Math.random()*answers.length)];
 }
 
+function getBravoAnswer(){
+    var answers = ["Great!","Perfect!","Excellent!","Bravo!","You are good!"];
+    return answers[Math.floor(Math.random()*answers.length)];
+}
+
 function wordsSame(w1, w2){
     return w1.toLowerCase() == w2.toLowerCase();
 }
@@ -147,6 +152,11 @@ async function citySearch(keyword){
                         headers: {"Authorization": "Bearer "+flightApiToken}
                     })
                     .then(res=>res.json());
+}
+
+function synonymSearch(word){
+    var url = `https://dictionary.yandex.net/api/v1/dicservice.json/lookup?key=dict.1.1.20170503T043643Z.acbc117b19dabddd.305996dbc25bb00b5012ac31557e4d3590d7ddc5&lang=en-en&text=${word}`;
+    return fetch(url).then(res=>res.json()).then(d=>Enumerable.From((d.def||[{tr:[{text:word}]}])[0].tr).Select(t=>t.text.toLowerCase()).Where(x=>x.indexOf(word)==-1).ToArray());
 }
 
 function scrollToBottom(){
