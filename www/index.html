@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <script src="js/angular.min.js"></script>
-        <script type="text/javascript" src="js/linq.min.js"></script>
-        <script type="text/javascript" src="js/lib.js"></script>
-        <script type="text/javascript" src="js/index.js"></script>
         <meta name="format-detection" content="telephone=no">
         <meta name="msapplication-tap-highlight" content="no">
         <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
@@ -12,7 +8,7 @@
         <title>Hello World</title>
     </head>
     <body ng-controller="MainController">
-        <div id="cardContainer">
+        <div id="cardContainer" ng-cloak>
             <div ng-repeat="card in msgs">
                 <div class="card {{card.speaker==1?'bot':'human'}}">
                     <span ng-if="card.text">{{card.text}}<br></span>
@@ -27,19 +23,48 @@
                             <li ng-repeat="l in card.asyncList track by $index">{{l}}</li>
                         </ul>    
                     </div>
+                    <table ng-if="card.resultSet" border="1">
+                        <tr>
+                            <th ng-repeat="cn in card.resultSet.columnNames">{{cn}}</th>
+                        </tr>
+                        <tr ng-repeat="row in card.resultSet.data">
+                            <td ng-repeat="val in row">{{val}}</th>
+                        </tr>
+                    </table>
                 </div>
             </div>
 
         </div>
 
 
-        <div class="microphone">
+        <div class="microphone" ng-cloak>
             <input type="text" ng-model="input" placeholder="Say something" ng-enter="getVoice()">
             <button ng-click="getVoice()">&nbsp;</button>
         </div>
 
-        <script src='https://code.responsivevoice.org/1.5.4/responsivevoice.js'></script>
-        <script>responsiveVoice.setDefaultVoice("US English Female");</script></div>
+        <script type="text/javascript" src="js/angular.min.js"></script>
+        <script type="text/javascript" src="js/linq.min.js"></script>
+        <script type="text/javascript" src="js/vocabulary.js"></script>
+        <script type="text/javascript" src="js/lib.js"></script>
+        <script type="text/javascript" src="js/index.js"></script>
+        <script type="text/javascript" src='https://code.responsivevoice.org/1.5.4/responsivevoice.js'></script>
+        <script>
+            responsiveVoice.setDefaultVoice("US English Female");
+            app.directive('ngEnter', function () {
+                return function (_, element, attrs) {
+                    element.bind("keydown keypress", function (event) {
+                        if (event.which === 13) {
+                            _.$apply(function () {
+                                _.$eval(attrs.ngEnter);
+                            });
+
+                            event.preventDefault();
+                        }
+                    });
+                };
+            });  
+
+        </script>
         <script type="text/javascript" src="cordova.js"></script>
     </body>
 </html>

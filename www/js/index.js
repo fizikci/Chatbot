@@ -12,13 +12,17 @@ var INTENTS = {
     whatTimeIsIt: "what-time-is-it",
     askingName: "asking-name",
     pronounceGame: "pronounce-game",
-    synonymGame: "synonym-game",
+    vocabularyGame: "vocabulary-game",
     sayAgain: "say-again",
     endGame: "end-game",
-    bookFlight: "book-flight"
+    bookFlight: "book-flight",
+    define: "define",
+    addWordToList: "add-word-to-list",
+    listLists: "list-lists",
+    sqlSelect: "sql-select",
 };
 
-var exampleIntents = ["Let's play pronunciation game", "Synonym game", "Say the last word again", "Game over"];
+var exampleIntents = ["Let's play pronunciation game", "Vocabulary game", "Say the last word again", "Game over", "Define word", "Add it to the list new words", "Show lists", "Select word and definition from new words"];
 
 setInterval(function(){
     if(micListening || speaking)
@@ -40,6 +44,7 @@ app.controller('MainController', function ($scope) {
     _ = $scope;
     _.micAvailable = micAvailable;
     _.msgs = [];
+    _.lists = {};
 
     _.addMsg = function(msg){
         if(!msg) return;
@@ -54,7 +59,7 @@ app.controller('MainController', function ($scope) {
         
         if(msg.prompt && msg.speaker==BOT)
             speak(msg.prompt, msg.mood || MOODS.normal, function(){
-                speechToText('', 1, function (results) {
+                speechToText(msg.micPrompt, 1, function (results) {
                     _.$apply(function(){
                         var currIntent = getIntent(results[0]);
                         _.addMsg({speaker:HUMAN, action:botWaitsForAnswer(currIntent) ? ANSWERING : ASKING, intent:currIntent, text:results[0]});
@@ -77,7 +82,7 @@ app.controller('MainController', function ($scope) {
             _.input = '';
         }
         else if(micAvailable && !micListening){
-            speechToText('', 1, function (results) {
+            speechToText(_.lastMsg.micPrompt, 1, function (results) {
                 _.$apply(function () {
                     var text = results[0];
                     var currIntent = getIntent(text);
@@ -88,21 +93,6 @@ app.controller('MainController', function ($scope) {
     }
 });
 
-app.directive('ngEnter', function () {
-    return function (_, element, attrs) {
-        element.bind("keydown keypress", function (event) {
-            if (event.which === 13) {
-                _.$apply(function () {
-                    _.$eval(attrs.ngEnter);
-                });
-
-                event.preventDefault();
-            }
-        });
-    };
-});  
-
-
 function getIntent(text) {
     text = text.toLowerCase();
 
@@ -110,10 +100,18 @@ function getIntent(text) {
         return INTENTS.greeting;
     else if (text.match(/what time/gi))
         return INTENTS.whatTimeIsIt;
+    else if (text.match(/define [a-z]+/gi))
+        return INTENTS.define;
+    else if (text.match(/add (last word|it)* *to the list [a-z]+/i))
+        return INTENTS.addWordToList;
+    else if(text.match(/(show|list) (the )*lists/i))
+        return INTENTS.listLists;
+    else if(text.match(/select( [a-z]+)+ from( [a-z]+)+/i))
+        return INTENTS.sqlSelect;
     else if (text.match(/(pronoun|pronunci).+game/gi))
         return INTENTS.pronounceGame;
-    else if (text.match(/synonym.+game/gi))
-        return INTENTS.synonymGame;
+    else if (text.match(/vocabulary.+game/gi))
+        return INTENTS.vocabularyGame;
     else if (text.match(/(want|need|book).+(fly|flight)/gi))
         return INTENTS.bookFlight;
     else if (text.match(/what.+your.+name/gi))
@@ -160,10 +158,11 @@ async function getNextBotMsg() {
                     msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text: !_.game.lastResultSuccess ? "You should have said "+prev.word+". You said "+last.text : (prev.word+". "+getBravoAnswer()), mood:_.game.lastResultSuccess?MOODS.excited:MOODS.sad};
                 }
                 else { // new game
-                    msg = {speaker:BOT, action:ASKING, intent:last.intent, word:words[Math.ceil(Math.random() * 10000)] , prompt:"Ok. Here is a word. Say it!"};
                     _.game = last;
-                    _.game.lastWord = msg.word;
+                    _.game.iteration = 1;
+                    _.game.lastWord = getRandomWord();
                     _.game.tryAgain = false;
+                    msg = {speaker:BOT, action:ASKING, intent:last.intent, word:_.game.lastWord, micPrompt:_.game.lastWord, prompt:"Ok. Here is a word. Say it!"};
                 }
             }
             else {
@@ -171,42 +170,45 @@ async function getNextBotMsg() {
                     msg = null;
                 else if(_.game && last!=_.game){
                     if(_.game.lastResultSuccess){
-                        _.game.lastWord = words[Math.ceil(Math.random() * 10000)];
+                        _.game.lastWord = getRandomWord();
                         _.game.tryAgain = false;
                     }else{
                         _.game.tryAgain = !_.game.tryAgain;
-                        if(!_.game.tryAgain) _.game.lastWord = words[Math.ceil(Math.random() * 10000)];
+                        if(!_.game.tryAgain) _.game.lastWord = getRandomWord();
                     }
-                    msg = {speaker:BOT, action:ASKING, intent:last.intent, word: _.game.lastWord, prompt:_.game.tryAgain?"Try again!":"Here is another word."};
+                    msg = {speaker:BOT, action:ASKING, intent:last.intent, word: _.game.lastWord, micPrompt:_.game.lastWord, prompt:_.game.tryAgain?"Try again!":"Here is another word."};
+                    _.game.iteration++;
                 }
                 else
                     msg = null;
             }
             break;
         
-        case INTENTS.synonymGame:
+        case INTENTS.vocabularyGame:
             if(last.speaker==HUMAN){
-                if(prev.intent==INTENTS.synonymGame){ // ongoing game
-                    _.game.lastResultSuccess = _.game.synonyms.indexOf(last.text)>-1;
+                if(prev.intent==INTENTS.vocabularyGame){ // ongoing game
+                    _.game.lastResultSuccess = wordsSame(last.text, _.game.lastWord);
                     msg = {speaker:BOT, action:ANSWERING, intent:last.intent, 
-                        text: (!_.game.lastResultSuccess ? "It is not one of the synonyms of "+_.game.lastWord+"." : (getBravoAnswer()+" You have found one synonym.")), 
+                        text: !_.game.lastResultSuccess ? `${getFailAnswer()} It is ${_.game.lastWord}.` : `${getBravoAnswer()} ${_.game.lastWord} is correct.`, 
                         mood:_.game.lastResultSuccess ? MOODS.excited : MOODS.sad,
-                        list:_.game.synonyms};
+                        list:_.game.vocabularys};
                 }
                 else { // new game
                     _.game = last;
-                    _.game.lastWord = words[Math.ceil(Math.random() * 2000)];
-                    _.game.synonyms = await synonymSearch(_.game.lastWord);
-                    msg = {speaker:BOT, action:ASKING, intent:last.intent, prompt:"Ok. Say one synonym for "+_.game.lastWord};
+                    _.game.iteration = 1;
+                    var entry = getRandomWordWithDefinition();
+                    _.game.lastWord = entry.word;
+                    msg = {speaker:BOT, action:ASKING, intent:last.intent, prompt:`Ok. What is the word for this definition? ${entry.definition}`, micPrompt:entry.definition};
                 }
             }
             else {
                 if(last.action==ASKING) // bot is waiting answer
                     msg = null;
                 else if(_.game && last!=_.game){
-                    _.game.lastWord = words[Math.ceil(Math.random() * 2000)];
-                    _.game.synonyms = await synonymSearch(_.game.lastWord);
-                    msg = {speaker:BOT, action:ASKING, intent:last.intent, prompt:"Here is another word: "+_.game.lastWord};
+                    var entry = getRandomWordWithDefinition();
+                    _.game.lastWord = entry.word;
+                    msg = {speaker:BOT, action:ASKING, intent:last.intent, prompt:(_.game.iteration<3?'Here is another one: ':'')+`${entry.definition}`, micPrompt:entry.definition};
+                    _.game.iteration++;
                 }
                 else
                     msg = null;
@@ -288,6 +290,49 @@ async function getNextBotMsg() {
                 }
             }
             break;
+
+        case INTENTS.define:
+            if(last.speaker==HUMAN){
+                last.word = last.text.match(/define (.+)\b/i)[1];
+                var def = defineWord(last.word);
+                last.text = 'define:';
+                msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:def || "I don't know that word"};
+            }
+            break;
+        
+        case INTENTS.addWordToList:
+            if(last.speaker==HUMAN){
+                var defineMsg = _.findContext(INTENTS.define);
+                if(!defineMsg || !defineMsg.word)
+                    msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:"No word in context"};
+                else {
+                    var listName = last.text.match(/add (last word|it)* *to the list ([a-z]+)/i)[2];
+                    if(!_.lists[listName]) _.lists[listName] = [];
+                    _.lists[listName].push({word:defineMsg.word, definition:defineWord(defineMsg.word)});
+                    msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:`added ${defineMsg.word} to the list ${listName}`};
+                }
+            }
+            break;
+
+        case INTENTS.listLists:
+            msg = last.speaker==HUMAN ? {speaker:BOT, action:ANSWERING, intent:last.intent, text:"Here are your lists:", list:Enumerable.From(_.lists).Select(x=>x.Key).ToArray()} : null;
+            break;
+
+        case INTENTS.sqlSelect:
+            if(last.speaker==HUMAN){
+                var res = last.text.match(/select(?<fields>(?: [a-z]+)+) from(?<list>(?: [a-z]+)+)/i);
+                var fields = res.groups.fields.trim().split(' ');
+                var listName = res.groups.list.trim();
+                if(fields && listName){
+                    msg = {speaker:BOT, action:ANSWERING, intent:last.intent, 
+                        text:`${listName} contains`, resultSet:{
+                            columnNames:fields, 
+                            data:Enumerable.From(_.lists[listName]).Select('x=>['+Enumerable.From(fields).Select(x=>'x.'+x).ToArray().join()+']').ToArray()}};
+                }
+                else
+                    msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:"SQL parse error"};
+            }
+            break;            
     }
 
     if(!msg && _.game && last.intent.indexOf('game')==-1 && last.time<timePassed-2){
@@ -302,35 +347,4 @@ function botWaitsForAnswer(currIntent){
         return _.lastMsg && _.lastMsg.intent==currIntent && _.lastMsg.speaker==BOT && _.lastMsg.prompt;
     else
         return _.lastMsg && _.lastMsg.speaker==BOT && _.lastMsg.prompt;
-}
-
-function parseFlightRequest(flight){
-    var str = flight.text;
-    var res = str.match(/today|tomorrow|next week|next month/i);
-    if(res){
-        flight.when = resolveDate(res[0]);
-        str = str.replace(res[0],'');
-    }
-
-    res = str.match(/from (.+) to (.+)/i);
-    if(res && res.length>0){
-        flight.from = res[1];
-        citySearch(flight.from).then(r=>{ flight.from = r.meta.count>0?r.data[0].iataCode:null; flight.fromFetched = flight.from!=null; }).catch(ex=>{flight.from=null;});
-        flight.to = res[2];
-        citySearch(flight.to).then(r=>{ flight.to = r.meta.count>0?r.data[0].iataCode:null; flight.toFetched = flight.to!=null; }).catch(ex=>{flight.to=null;});
-    } else {
-        res = str.match(/to (.+)/i);
-        if(res && res.length>0){
-            flight.to = res[1];
-            citySearch(flight.to).then(r=>{ flight.to = r.meta.count>0?r.data[0].iataCode:null; flight.toFetched = flight.to!=null; }).catch(ex=>{flight.to=null;});
-        } else {
-            res = str.match(/from (.+)/i);
-            if(res && res.length>0){
-                flight.from = res[1];
-                citySearch(flight.from).then(r=>{ flight.from = r.meta.count>0?r.data[0].iataCode:null; flight.fromFetched = flight.from!=null; }).catch(ex=>{flight.from=null;});
-            }        
-        }
-    }
-
-    flight.parsed = true;
 }
