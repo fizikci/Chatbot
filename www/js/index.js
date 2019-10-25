@@ -135,6 +135,8 @@ async function getNextBotMsg() {
 
     if(last==null) return null;
 
+    var flight = _.findContext(INTENTS.bookFlight);
+
     var msg = null;
 
     switch (last.intent) {
@@ -296,7 +298,7 @@ async function getNextBotMsg() {
                 last.word = last.text.match(/define (.+)\b/i)[1];
                 var def = defineWord(last.word);
                 last.text = 'define:';
-                msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:def || "I don't know that word"};
+                msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:last.word + ". " + (def || "I don't know that word")};
             }
             break;
         
