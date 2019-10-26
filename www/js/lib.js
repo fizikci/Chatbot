@@ -84,7 +84,9 @@ function getFailAnswer(){
 }
 
 function wordsSame(w1, w2){
-    return w1.toLowerCase() == w2.toLowerCase();
+    return w1.toLowerCase() == w2.toLowerCase() ||
+    (w1.toLowerCase()+'s') == w2.toLowerCase() ||
+    w1.toLowerCase() == (w2.toLowerCase()+'s');
 }
 
 function isYes(str){
@@ -183,7 +185,17 @@ function getRandomWord(limit){
 }
 
 function defineWord(word){
-    return adjectives[word] || nouns[word] || verbs[word];
+    var v = verbs[word]; if(v) v = v[0];
+    var a = adjectives[word]; if(a) a = a[0];
+    var n = nouns[word]; if(n) n = n[0];
+
+    if(v && v.indexOf(word)>-1 && n)
+        return n;
+
+    if(a && a.indexOf(word)>-1 && n)
+        return n;
+    
+    return v || a || n;
 }
 
 function getRandomWordWithDefinition(){
