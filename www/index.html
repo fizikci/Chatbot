@@ -47,7 +47,8 @@
         <script type="text/javascript" src="js/vocabulary.js"></script>
         <script type="text/javascript" src="js/lib.js"></script>
         <script type="text/javascript" src="js/index.js"></script>
-        <script type="text/javascript" src='https://code.responsivevoice.org/1.5.4/responsivevoice.js'></script>
+        <script type="text/javascript" src="js/getNextBotMsg.js"></script>
+        <script type="text/javascript" src='https://code.responsivevoice.org/responsivevoice.js'></script>
         <script>
             responsiveVoice.setDefaultVoice("US English Female");
             app.directive('ngEnter', function () {
@@ -63,7 +64,11 @@
                     });
                 };
             });  
-
+            var cleanAlert = function(){
+                var e = document.getElementsByClassName('rvButtonAllow');
+                if(e.length) e[0].click(); else setTimeout(cleanAlert, 50);
+            }
+            setTimeout(cleanAlert, 50);
         </script>
         <script type="text/javascript" src="cordova.js"></script>
     </body>
