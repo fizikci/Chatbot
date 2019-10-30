@@ -21,13 +21,24 @@ var INTENTS = {
     addWordToList: "add-word-to-list",
     listLists: "list-lists",
     sqlSelect: "sql-select",
+    showStats: "show-stats",
+    dev: "dev"
 };
 
-var LEVELS = {beginner:0, intermediate:1, advanced:2};
+var LEVELS = {
+    beginner:0, 
+    intermediate:1, 
+    advanced:2,
+    getName(val){
+        return Enumerable.From(LEVELS).Where(o=>o.Value==val).Select(o=>capitalize(o.Key)).First();
+    }
+};
 
 var exampleIntents = ["Let's play pronunciation game", "Play vocabulary game", 'You can say "Game over" anytime to finish a game', "Define anything", "Show stats"];
 
 setInterval(function(){
+    timePassed++;
+
     if(micListening || speaking)
         return;
         
@@ -35,8 +46,6 @@ setInterval(function(){
         if(msg)
             _.$apply(function(){ _.addMsg(msg); });
     });
-
-    timePassed++;
 }, 1000);
 
 var app = angular.module('pronounceApp', []);
@@ -52,7 +61,7 @@ app.controller('MainController', function ($scope) {
     _.addMsg = function(msg){
         if(!msg) return;
 
-        msg.ser = JSON.stringify(msg);
+        //msg.ser = JSON.stringify(msg);
 
         msg.time = timePassed;
         _.msgs.push(msg);
@@ -100,11 +109,17 @@ app.controller('MainController', function ($scope) {
 
 function getIntent(text) {
     text = text.toLowerCase();
-
+    // ABSURD INTENTS
     if (text=="hi" || text=="hey" || text=="hello")
         return INTENTS.greeting;
     else if (text.match(/what time/gi))
         return INTENTS.whatTimeIsIt;
+    else if (text.match(/what.+your.+name/gi))
+        return INTENTS.askingName;
+    // HELP
+    else if (text=="help")
+        return INTENTS.help;
+    // WORD RELATED INTENTS
     else if (text.match(/define [a-z]+/gi))
         return INTENTS.define;
     else if (text.match(/add (last word|it)* *to the list [a-z]+/i))
@@ -113,20 +128,23 @@ function getIntent(text) {
         return INTENTS.listLists;
     else if(text.match(/show words in( the)*( list)* ([a-z]+)/i))
         return INTENTS.showList;
+    else if (text.match(/(say|word).+again/gi))
+        return INTENTS.sayAgain;
+    // GAMES
     else if (text.match(/(pronoun|pronunci).+game/gi))
         return INTENTS.pronounceGame;
     else if (text.match(/vocabulary.+game/gi))
         return INTENTS.vocabularyGame;
-    else if (text.match(/(want|need|book).+(fly|flight)/gi))
-        return INTENTS.bookFlight;
-    else if (text.match(/what.+your.+name/gi))
-        return INTENTS.askingName;
-    else if (text.match(/(say|word).+again/gi))
-        return INTENTS.sayAgain;
     else if (text.match(/((end|quit|finish|stop).+game)|game over/gi))
         return INTENTS.endGame;
-    else if (text=="help")
-        return INTENTS.help;
+    else if(text.match(/(show|display) stats/))
+        return INTENTS.showStats;
+    // TO BE DELETED
+    else if (text.match(/(want|need|book).+(fly|flight)/gi))
+        return INTENTS.bookFlight;
+    // ELSE
+    else if (text.match(/^dev:.+$/gi))
+        return INTENTS.dev;
     else if(botWaitsForAnswer())
         return _.lastMsg.intent;
     else

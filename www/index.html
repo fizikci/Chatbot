@@ -24,11 +24,11 @@
                         </ul>    
                     </div>
                     <table ng-if="card.resultSet" border="1">
-                        <tr>
-                            <th ng-repeat="cn in card.resultSet.columnNames">{{cn}}</th>
+                        <tr ng-if="card.resultSet.columnNames">
+                            <th ng-repeat="cn in card.resultSet.columnNames track by $index">{{cn}}</th>
                         </tr>
                         <tr ng-repeat="row in card.resultSet.data">
-                            <td ng-repeat="val in row">{{val}}</th>
+                            <td ng-repeat="val in row track by $index">{{val}}</th>
                         </tr>
                     </table>
                 </div>

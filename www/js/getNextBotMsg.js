@@ -21,7 +21,7 @@ async function getNextBotMsg() {
                             msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:'Your native language has been set to '+last.text};
                             saveLocalData();
                         }else
-                            msg = {speaker:BOT, action:ANSWERING, intent:last.intent, asking:"nativeLang", text:last.text+' is not a supported language', prompt:'Please say one of these languages:', list:Enumerable.From(langs).Select(o=>o.Key[0].toUpperCase()+o.Key.substr(1)).ToArray()};
+                            msg = {speaker:BOT, action:ANSWERING, intent:last.intent, asking:"nativeLang", text:last.text+' is not a supported language', prompt:'Please say one of these languages:', list:Enumerable.From(langs).Where(o=>typeof o.Value=='string').Select(o=>capitalize(o.Key)).ToArray()};
                     } 
                     else if(prev.asking=='level'){
                         _.db.level = getLevel(last.text);
@@ -29,7 +29,7 @@ async function getNextBotMsg() {
                             msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:'Your level has been set to '+last.text};
                             saveLocalData();
                         }else
-                            msg = {speaker:BOT, action:ANSWERING, intent:last.intent, asking:"level", text:last.text+' is not a supported level.', prompt:'Please say one of these levels:', list:Enumerable.From(LEVELS).Select(o=>o.Key[0].toUpperCase()+o.Key.substr(1).toLowerCase()).ToArray()};
+                            msg = {speaker:BOT, action:ANSWERING, intent:last.intent, asking:"level", text:last.text+' is not a supported level.', prompt:'Please say one of these levels:', list:Enumerable.From(LEVELS).Where(o=>typeof o.Value=='number').Select(o=>capitalize(o.Key)).ToArray()};
                     } 
                 }
             } else if(!last.asking) {
@@ -247,8 +247,45 @@ async function getNextBotMsg() {
                 var listName = last.text.match(/show words in( the)*( list)* ([a-z ]+)/i)[3];
                 msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:listName+":", list:_.db.lists[listName]};
             }
-            break;            
-    }
+            break;
+        
+        // SHOW STATS
+        case INTENTS.showStats:
+            if(last.speaker==HUMAN){
+                var resultSet = {
+                    data:[
+                        ['Native Language', langs.getName(_.db.nativeLang)],
+                        ['Level', LEVELS.getName(_.db.level)],
+                        ['Number of Words', words.length],
+                        ['Good pronounced', _.db.lists['good pronounce'].length],
+                        ['Bad pronounced', _.db.lists['bad pronounce'].length]
+                    ]
+                };
+                msg = {speaker:BOT, action:ANSWERING, intent:last.intent, resultSet:resultSet};
+            }
+            break;
+        // DEV
+        case INTENTS.dev:
+            if(last.speaker==HUMAN){
+                var res = eval(`(${last.text.substr(4)})`);
+                if(!res)
+                    msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:'null'};
+                else if(typeof res == 'object'){
+                    if(res.length)
+                        msg = {speaker:BOT, action:ANSWERING, intent:last.intent, resultSet:{columns:new Reflector(res[0]).getProperties(), data:Enumerable.From(res).Select(e=>new Reflector(e).getValues()).ToArray()}};
+                    else{
+                        var entries = new Reflector(res).getEntries();
+                        if(entries.length)
+                            msg = {speaker:BOT, action:ANSWERING, intent:last.intent, resultSet:{data:entries}};
+                        else
+                            msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:JSON.stringify(res)};
+                    }
+                }
+                else
+                    msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:res.toString()};
+            }
+            break;
+        }
 
     if(!msg && _.game && last.intent.indexOf('game')==-1 && last.time<timePassed-2){
         _.game = null;

@@ -70,3 +70,11 @@ body {
 textarea:focus, input:focus, button:focus{
     outline: none;
 }
+table {
+    border-collapse: collapse;
+}
+
+table, th, td {
+    border: 1px solid rgb(109, 175, 131);
+    padding:3px
+}
