@@ -34,7 +34,7 @@ var LEVELS = {
     }
 };
 
-var exampleIntents = ["Pronunciation game", "Vocabulary game", 'Game over (anytime to finish a game)', "Define anything", "Show stats"];
+var exampleIntents = ["Pronunciation game", "Vocabulary game", 'Game over', "Define anything", "Show stats", "Stop showing ads"];
 
 setInterval(function(){
     timePassed++;

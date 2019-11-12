@@ -221,9 +221,28 @@ async function getNextBotMsg() {
         case INTENTS.define:
             if(last.speaker==HUMAN){
                 last.word = last.text.match(/define (.+)\b/i)[1];
-                var def = defineWord(last.word);
                 last.text = 'define:';
-                msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:last.word + ". " + (def || "I don't know that word")};
+                msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:'Searching '+last.word+'...', asyncList:'waiting', mood:MOODS.excited};
+                
+                fetch('https://googledictionaryapi.eu-gb.mybluemix.net/?define='+last.word+'&lang=en')
+                    .then(r=>r.json())
+                    .then(d=>{
+                        _.$apply(function(){
+                            msg.asyncList = [];
+                            if(d && d[0] && d[0].meaning)
+                                for(var key in d[0].meaning)
+                                    msg.asyncList.push(`(${key}) ${d[0].meaning[key][0].definition}`);
+                            else
+                                msg.asyncList.push('Not found in the dictionary!');
+                            setTimeout(scrollToBottom, 100);
+                        });
+                    })
+                    .catch(res=>{
+                        _.$apply(function(){
+                            msg.asyncList = ['Not found in the dictionary!'];
+                            setTimeout(scrollToBottom, 100);
+                        });
+                    });
             }
             break;
         

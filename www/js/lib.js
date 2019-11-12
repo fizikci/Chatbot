@@ -219,10 +219,6 @@ function getRandomWord(forPronounce){
     return theWords[index];
 }
 
-function defineWord(word){    
-    return dict[word] ? dict[word][0][1] : 'Not found in dictionary';
-}
-
 function getRandomWordWithDefinition(){
     var w = getRandomWord();
     var def = defineWord(w);
