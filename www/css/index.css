@@ -22,6 +22,10 @@ body {
     width: 100%;
     margin-bottom: 4px;
     display: flex;
+    /* added later */
+    margin-bottom: 0px;
+    background: #cabbaa;
+    padding: 5px 0px;
 }
 
 .card {

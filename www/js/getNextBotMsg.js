@@ -1,4 +1,6 @@
 async function getNextBotMsg() {
+    
+    if(!_) return null;
 
     var last = _.lastMsg;
     var prev = _.msgs[_.msgs.indexOf(last)-1];
@@ -99,11 +101,16 @@ async function getNextBotMsg() {
         case INTENTS.vocabularyGame:
             if(last.speaker==HUMAN){
                 if(prev.intent==INTENTS.vocabularyGame){ // ongoing game
-                    _.game.lastResultSuccess = _.game.lastAsk=='en' ? wordsSame(last.text, _.game.lastTrans) : wordsSame(last.text, _.game.lastWord);
+                    _.game.lastResultSuccess = _.game.lastAsk=='en' ? wordsSameAny(last.text, _.game.lastTrans[1]) : wordsSameAny(last.text, _.game.lastTrans[0]);
                     msg = {speaker:BOT, action:ANSWERING, intent:last.intent, 
-                        text: !_.game.lastResultSuccess ? getFailAnswer()+" Correct answer is " + (_.game.lastAsk=='en' ? _.game.lastTrans : _.game.lastWord) : (getBravoAnswer() +' '+(_.game.lastAsk=='en' ? _.game.lastTrans : _.game.lastWord)+ ' is correct.'), 
-                        mood:_.game.lastResultSuccess ? MOODS.excited : MOODS.sad,
-                        list:_.game.vocabularys};
+                        text: !_.game.lastResultSuccess ? 
+                                getFailAnswer() + " Correct answer could be " 
+                                    : 
+                                (getBravoAnswer() + ' It is correct.'), 
+                        mood: _.game.lastResultSuccess ? MOODS.excited : MOODS.sad,
+                        readList: !_.game.lastResultSuccess,
+                        list: !_.game.lastResultSuccess ? (_.game.lastAsk=='en' ? _.game.lastTrans[1] : _.game.lastTrans[0]) : null,
+                        listLang: _.game.lastAsk!='en' ? lang : _.db.nativeLang};
                 }
                 else { // new game
                     _.game = last;
@@ -115,11 +122,10 @@ async function getNextBotMsg() {
                 if(last.action==ASKING) // bot is waiting answer
                     msg = null;
                 else if(_.game && last!=_.game){
-                    _.game.lastWord = getRandomWord();
-                    _.game.lastTrans = await translate(_.game.lastWord);
+                    _.game.lastTrans = await translate(getRandomWord());
                     if(_.game.lastTrans){
                         _.game.lastAsk = Math.random() >= .5 ? 'en' : 'tr'; // tr: translation
-                        msg = {speaker:BOT, action:ASKING, intent:last.intent, prompt: _.game.lastAsk=='en' ? _.game.lastWord : _.game.lastTrans, micLang:_.game.lastAsk=='en' ? _.db.nativeLang:'en-US', lang:_.game.lastAsk=='en' ? 'en-US':_.db.nativeLang};
+                        msg = {speaker:BOT, action:ASKING, intent:last.intent, prompt: _.game.lastAsk=='en' ? _.game.lastTrans[0][0] : _.game.lastTrans[1][0], micLang:_.game.lastAsk=='en' ? _.db.nativeLang:'en-US', lang:_.game.lastAsk=='en' ? 'en-US':_.db.nativeLang};
                         _.game.iteration++;
                     }
                     else
@@ -287,9 +293,8 @@ async function getNextBotMsg() {
             break;
         }
 
-    if(!msg && _.game && last.intent.indexOf('game')==-1 && last.time<timePassed-2){
-        _.game = null;
-    }
+    //if(!msg && _.game && INTENTS.getKey(last.intent).indexOf('game')==-1 && last.time<timePassed-2)
+    //    _.game = null;
 
     return msg;
 }

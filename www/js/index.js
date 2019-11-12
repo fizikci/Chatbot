@@ -6,23 +6,23 @@ var ANSWERING = 1;
 var ASKING = 2;
 
 var INTENTS = {
-    unresolved: "unresolved",
-    welcome: "welcome",
-    greeting: "greeting",
-    help: 'help',
-    whatTimeIsIt: "what-time-is-it",
-    askingName: "asking-name",
-    pronounceGame: "pronounce-game",
-    vocabularyGame: "vocabulary-game",
-    sayAgain: "say-again",
-    endGame: "end-game",
-    bookFlight: "book-flight",
-    define: "define",
-    addWordToList: "add-word-to-list",
-    listLists: "list-lists",
-    sqlSelect: "sql-select",
-    showStats: "show-stats",
-    dev: "dev"
+    unresolved:     /xd76t47hgf784yzkfh847h4o7fzi4/,
+    welcome:        /djh4yhse87y4hfsy74fuisay47fhia47/,
+    greeting:       /^(hi|hey|hello)$/,
+    help:           /^help$/,
+    whatTimeIsIt:   /what time/,
+    askingName:     /what.+your.+name/,
+    pronounceGame:  /(pronoun|pronunci).+game/,
+    vocabularyGame: /vocabulary.+game/,
+    sayAgain:       /(say|word).+again/,
+    endGame:        /((end|quit|finish|stop).+game)|game over/,
+    bookFlight:     /(want|need|book).+(fly|flight)/,
+    define:         /define [a-z]+/,
+    addWordToList:  /add (last word|it)* *to the list [a-z]+/,
+    listLists:      /(show|list) (the )*lists/,
+    showList:       /show words in( the)*( list)* ([a-z]+)/,
+    showStats:      /(show|display) stats/,
+    dev:            /^dev:(.+)$/
 };
 
 var LEVELS = {
@@ -34,7 +34,7 @@ var LEVELS = {
     }
 };
 
-var exampleIntents = ["Let's play pronunciation game", "Play vocabulary game", 'You can say "Game over" anytime to finish a game', "Define anything", "Show stats"];
+var exampleIntents = ["Pronunciation game", "Vocabulary game", 'Game over (anytime to finish a game)', "Define anything", "Show stats"];
 
 setInterval(function(){
     timePassed++;
@@ -69,10 +69,10 @@ app.controller('MainController', function ($scope) {
         setTimeout(scrollToBottom, 200);
 
         if(msg.text && msg.speaker==BOT)
-            speak(msg.text, msg.mood || MOODS.normal, msg.lang);
+            speak(msg, null);
         
         if(msg.prompt && msg.speaker==BOT)
-            speak(msg.prompt, msg.mood || MOODS.normal, msg.lang, function(){
+            speak(msg, function(){
                 speechToText(msg.micPrompt, 1, msg.micLang, function (results) {
                     _.$apply(function(){
                         var currIntent = getIntent(results[0]);
@@ -109,43 +109,12 @@ app.controller('MainController', function ($scope) {
 
 function getIntent(text) {
     text = text.toLowerCase();
-    // ABSURD INTENTS
-    if (text=="hi" || text=="hey" || text=="hello")
-        return INTENTS.greeting;
-    else if (text.match(/what time/gi))
-        return INTENTS.whatTimeIsIt;
-    else if (text.match(/what.+your.+name/gi))
-        return INTENTS.askingName;
-    // HELP
-    else if (text=="help")
-        return INTENTS.help;
-    // WORD RELATED INTENTS
-    else if (text.match(/define [a-z]+/gi))
-        return INTENTS.define;
-    else if (text.match(/add (last word|it)* *to the list [a-z]+/i))
-        return INTENTS.addWordToList;
-    else if(text.match(/(show|list) (the )*lists/i))
-        return INTENTS.listLists;
-    else if(text.match(/show words in( the)*( list)* ([a-z]+)/i))
-        return INTENTS.showList;
-    else if (text.match(/(say|word).+again/gi))
-        return INTENTS.sayAgain;
-    // GAMES
-    else if (text.match(/(pronoun|pronunci).+game/gi))
-        return INTENTS.pronounceGame;
-    else if (text.match(/vocabulary.+game/gi))
-        return INTENTS.vocabularyGame;
-    else if (text.match(/((end|quit|finish|stop).+game)|game over/gi))
-        return INTENTS.endGame;
-    else if(text.match(/(show|display) stats/))
-        return INTENTS.showStats;
-    // TO BE DELETED
-    else if (text.match(/(want|need|book).+(fly|flight)/gi))
-        return INTENTS.bookFlight;
-    // ELSE
-    else if (text.match(/^dev:.+$/gi))
-        return INTENTS.dev;
-    else if(botWaitsForAnswer())
+
+    for(let key in INTENTS)
+        if(text.match(INTENTS[key]))
+            return INTENTS[key];
+
+    if(botWaitsForAnswer())
         return _.lastMsg.intent;
     else
         return INTENTS.unresolved;

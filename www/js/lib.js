@@ -59,7 +59,7 @@ function speechToText(prompt, matches, language, success) {
 var MOODS = {
     normal: {rate:1, volume:.7},
     excited: {rate:1, volume:1},
-    sad: {rate:.8, volume:.5},
+    sad: {rate:1, volume:.5},
 }
 var speakLangs = {
      "en-US": "US English Female",
@@ -70,20 +70,28 @@ var speakLangs = {
      "es-ES": "Spanish Female",
      "tr-TR": "Turkish Female"
     };
-function speak(text, mood, language, success){
+function speak(msg, success){
+    console.log('speaking...', msg);
+    msg.mood = msg.mood || MOODS.normal;
     responsiveVoice.speak(
-        text, 
-        speakLangs[language || lang], 
+        msg.prompt || msg.text, 
+        speakLangs[msg.lang || lang], 
         {
-            rate: mood.rate, 
-            volume:mood.volume, 
-            onstart:function(){speaking=true;},
-            onend:function(){speaking=false; if(success) success();}
+            rate: msg.mood.rate, 
+            volume: msg.mood.volume, 
+            onstart: function(){speaking=true;},
+            onend: function(){
+                speaking=false; 
+                if(msg.readList){
+                    speak({text:msg.list.join(', '), mood:msg.mood, lang:msg.listLang}, success);
+                } else if(success) 
+                    success();
+            }
         });
 }
 
 function getUnresolvedAnswer(){
-    var answers = ["Sorry, I couldn't understand what you said.","Come again?","I am afraid I don't know this.","I have never heard this","This is not covered by my limited knowledge","Can you please rephrase this?"];
+    var answers = ["Sorry, I couldn't understand what you said.","Come again?","I am afraid I don't know how to reply this.","This is not covered by my limited knowledge","Can you please rephrase this?"];
     return answers[Math.floor(Math.random()*answers.length)];
 }
 
@@ -109,6 +117,9 @@ function wordsSame(w1, w2){
     return w1.toLowerCase() == w2.toLowerCase() ||
     (w1.toLowerCase()+'s') == w2.toLowerCase() ||
     w1.toLowerCase() == (w2.toLowerCase()+'s');
+}
+function wordsSameAny(w, arr){
+    return arr.some(x=>wordsSame(w,x));
 }
 
 function isYes(str){
@@ -209,7 +220,7 @@ function getRandomWord(forPronounce){
 }
 
 function defineWord(word){    
-    return dict[word][0][1];
+    return dict[word] ? dict[word][0][1] : 'Not found in dictionary';
 }
 
 function getRandomWordWithDefinition(){
@@ -269,7 +280,17 @@ function addWordToGoodPronounceList(w){
 function translate(word){
     let l = _.db.nativeLang.split('-')[0];
     var url = `https://dictionary.yandex.net/api/v1/dicservice.json/lookup?key=dict.1.1.20170503T043643Z.acbc117b19dabddd.305996dbc25bb00b5012ac31557e4d3590d7ddc5&lang=en-${l}&text=${word}`;
-    return fetch(url).then(res=>res.json()).then( d=>(d.def||[{tr:[{text:word}]}])[0].tr[0].text );
+    return fetch(url).then(res=>res.json()).then( d=>{
+        if(d.def){
+            var res = [[d.def[0].text], [d.def[0].tr[0].text]];
+            if(d.def[0].tr[0].mean)
+                d.def[0].tr[0].mean.forEach(x=>res[0].push(x.text));
+            if(d.def[0].tr[0].syn)
+                d.def[0].tr[0].syn.forEach(x=>res[1].push(x.text));
+            return res;
+        }
+        return [[''],['']];
+    });
 }
 
 function scrollToBottom(){
