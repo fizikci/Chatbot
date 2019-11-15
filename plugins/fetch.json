@@ -15,18 +15,18 @@
     "is_top_level": true,
     "variables": {}
   },
-  "cordova-plugin-texttospeech": {
-    "source": {
-      "type": "registry",
-      "id": "cordova-plugin-texttospeech"
-    },
-    "is_top_level": true,
-    "variables": {}
-  },
   "cordova-plugin-device": {
     "source": {
       "type": "registry",
       "id": "cordova-plugin-device"
+    },
+    "is_top_level": true,
+    "variables": {}
+  },
+  "cordova-plugin-texttospeech": {
+    "source": {
+      "type": "registry",
+      "id": "cordova-plugin-texttospeech"
     },
     "is_top_level": true,
     "variables": {}

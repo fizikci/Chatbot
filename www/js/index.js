@@ -4,6 +4,7 @@ var BOT = 1;
 var HUMAN = 2;
 var ANSWERING = 1;
 var ASKING = 2;
+var gettingNextBotMsg = false;
 
 var INTENTS = {
     unresolved:     /xd76t47hgf784yzkfh847h4o7fzi4/,
@@ -39,8 +40,10 @@ var exampleIntents = ["Pronunciation game", "Vocabulary game", 'Game over', "Def
 setInterval(function(){
     timePassed++;
 
-    if(micListening || speaking)
+    if(micListening || speaking || gettingNextBotMsg){
+        console.log(`canceled getNextBotMsg because micListening:${micListening} || speaking:${speaking} || gettingNextBotMsg:${gettingNextBotMsg}`);
         return;
+    }
         
     getNextBotMsg().then(function(msg){
         if(msg)

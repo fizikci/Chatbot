@@ -27,8 +27,8 @@
     "plugins": {
       "cordova-plugin-whitelist": {},
       "cordova-plugin-speechrecognition": {},
-      "cordova-plugin-texttospeech": {},
-      "cordova-plugin-device": {}
+      "cordova-plugin-device": {},
+      "cordova-plugin-texttospeech": {}
     },
     "platforms": [
       "browser",

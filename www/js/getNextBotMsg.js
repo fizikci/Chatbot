@@ -1,11 +1,13 @@
 async function getNextBotMsg() {
     
-    if(!_) return null;
+    if(!_) return null; //***
 
     var last = _.lastMsg;
     var prev = _.msgs[_.msgs.indexOf(last)-1];
 
-    if(last==null) return null;
+    if(last==null) return null; //***
+
+    gettingNextBotMsg = true;
 
     var flight = _.findContext(INTENTS.bookFlight);
 
@@ -122,7 +124,9 @@ async function getNextBotMsg() {
                 if(last.action==ASKING) // bot is waiting answer
                     msg = null;
                 else if(_.game && last!=_.game){
-                    _.game.lastTrans = await translate(getRandomWord());
+                    _.game.lastTrans = null;
+                    while(_.game.lastTrans==null)
+                        try{ _.game.lastTrans = await translate(getRandomWord());} catch{}
                     if(_.game.lastTrans){
                         _.game.lastAsk = Math.random() >= .5 ? 'en' : 'tr'; // tr: translation
                         msg = {speaker:BOT, action:ASKING, intent:last.intent, prompt: _.game.lastAsk=='en' ? _.game.lastTrans[0][0] : _.game.lastTrans[1][0], micLang:_.game.lastAsk=='en' ? _.db.nativeLang:'en-US', lang:_.game.lastAsk=='en' ? 'en-US':_.db.nativeLang};
@@ -224,22 +228,10 @@ async function getNextBotMsg() {
                 last.text = 'define:';
                 msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:'Searching '+last.word+'...', asyncList:'waiting', mood:MOODS.excited};
                 
-                fetch('https://googledictionaryapi.eu-gb.mybluemix.net/?define='+last.word+'&lang=en')
-                    .then(r=>r.json())
-                    .then(d=>{
+                define(last.word)
+                    .then(res=>{
                         _.$apply(function(){
-                            msg.asyncList = [];
-                            if(d && d[0] && d[0].meaning)
-                                for(var key in d[0].meaning)
-                                    msg.asyncList.push(`(${key}) ${d[0].meaning[key][0].definition}`);
-                            else
-                                msg.asyncList.push('Not found in the dictionary!');
-                            setTimeout(scrollToBottom, 100);
-                        });
-                    })
-                    .catch(res=>{
-                        _.$apply(function(){
-                            msg.asyncList = ['Not found in the dictionary!'];
+                            msg.asyncList = res;
                             setTimeout(scrollToBottom, 100);
                         });
                     });
@@ -289,6 +281,7 @@ async function getNextBotMsg() {
                 msg = {speaker:BOT, action:ANSWERING, intent:last.intent, resultSet:resultSet};
             }
             break;
+
         // DEV
         case INTENTS.dev:
             if(last.speaker==HUMAN){
@@ -314,6 +307,8 @@ async function getNextBotMsg() {
 
     //if(!msg && _.game && INTENTS.getKey(last.intent).indexOf('game')==-1 && last.time<timePassed-2)
     //    _.game = null;
+
+    gettingNextBotMsg = false;
 
     return msg;
 }
