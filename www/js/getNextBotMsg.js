@@ -285,7 +285,10 @@ async function getNextBotMsg() {
         // DEV
         case INTENTS.dev:
             if(last.speaker==HUMAN){
-                var res = eval(`(${last.text.substr(4)})`);
+                var res = '';
+                try{res = eval(`(${last.text.substr(4)})`);}
+                catch(e){res = e.toString();}
+                
                 if(!res)
                     msg = {speaker:BOT, action:ANSWERING, intent:last.intent, text:'null'};
                 else if(typeof res == 'object'){

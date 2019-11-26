@@ -78,8 +78,9 @@ app.controller('MainController', function ($scope) {
             speak(msg, function(){
                 speechToText(msg.micPrompt, 1, msg.micLang, function (results) {
                     _.$apply(function(){
-                        var currIntent = getIntent(results[0]);
-                        _.addMsg({speaker:HUMAN, action:botWaitsForAnswer(currIntent) ? ANSWERING : ASKING, intent:currIntent, text:results[0]});
+                        var speech = cleanSpeachToText(results[0]);
+                        var currIntent = getIntent(speech);
+                        _.addMsg({speaker:HUMAN, action:botWaitsForAnswer(currIntent) ? ANSWERING : ASKING, intent:currIntent, text:speech});
                     });
                 });
             });
@@ -101,7 +102,7 @@ app.controller('MainController', function ($scope) {
         else if(micAvailable && !micListening){
             speechToText(_.lastMsg.micPrompt, 1, _.lastMsg.micLang, function (results) {
                 _.$apply(function () {
-                    var text = results[0];
+                    var text = cleanSpeachToText(results[0]);
                     var currIntent = getIntent(text);
                     _.addMsg({speaker:HUMAN, action: botWaitsForAnswer(currIntent) ? ANSWERING : ASKING, intent: currIntent, text: text });
                 });
