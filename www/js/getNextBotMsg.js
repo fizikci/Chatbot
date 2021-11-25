@@ -142,7 +142,7 @@ async function getNextBotMsg() {
         
         // HELP
         case INTENTS.help:
-            msg = last.speaker==HUMAN ? {speaker:BOT, action:ANSWERING, intent:INTENTS.help, text:"Here are the things you can say:", list:getExampleIntents()} : null;
+            msg = last.speaker==HUMAN ? {speaker:BOT, action:ANSWERING, intent:INTENTS.help, text:"Here are the things you can say:", list:exampleIntents} : null;
             break;
         
         // SAY AGAIN

@@ -85,7 +85,7 @@ function speak(msg, success){
         {
             rate: msg.mood.rate, 
             volume: msg.mood.volume, 
-            onstart: function(){speaking=true;},
+            onstart: function(){speaking=false;},
             onend: function(){
                 speaking=false; 
                 if(msg.readList){
@@ -296,19 +296,19 @@ function translate(word){
 }
 
 function define(word){
-    return fetch('https://googledictionaryapi.eu-gb.mybluemix.net/?define='+word+'&lang=en')
+    return fetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+word)
     .then(r=>r.json())
     .then(d=>{
         var res = [];
-        if(d && d[0] && d[0].meaning)
-            for(var key in d[0].meaning)
-                res.push(`(${key}) ${d[0].meaning[key][0].definition}`);
+        if(d && d[0] && d[0].meanings)
+            for(var elm of d[0].meanings)
+                res.push(`(${elm.partOfSpeech}) ${elm.definitions[0].definition}`);
         else
             res.push('Not found in the dictionary!');
         return res;
     })
     .catch(res=>{
-        return ['Not found in the dictionary!'];
+        return ['Not found in the dictionary! ' + res];
     });
 }
 
